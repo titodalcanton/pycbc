@@ -51,9 +51,9 @@ except ImportError:
                            
 requires = ['lal.lal', 'lalsimulation.lalsimulation', 'glue', 'pylal']
 setup_requires = []
-install_requires =  setup_requires + ['Mako>=1.0.1',
-                      'argparse>=1.3.0',
-                      'decorator>=3.4.2',
+install_requires =  setup_requires + ['Mako>=0.7.0',
+                      'argparse>=1.1',
+                      'decorator>=3.3.3',
                       'scipy>=0.13.0',
                       'unittest2',
                       'matplotlib>=1.3.1',

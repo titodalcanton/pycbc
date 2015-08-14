@@ -10,7 +10,7 @@ Prerequisites
 * python-decorator >= 3.3
   Should be available in the distribution.
   
-* argparse >= 1.2.0
+* argparse >= 1.1
   Should be available in the distribution
 
 * Numpy >= 1.4.1 and Scipy >= 0.7.2
