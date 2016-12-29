@@ -103,7 +103,7 @@ class LiveEventManager(object):
             ifo = active[0]
             single = sngl_estimator[ifo].check(results[ifo])
             if single is not None:
-                fname = 'single-%s-%s.xml' % (ifo, single.time)
+                fname = 'single-%s-%10.2f.xml' % (ifo, single.time)
                 if args.enable_single_detector_upload:
                     single.upload(fname, {ifo:psds[ifo]},
                               low_frequency_cutoff,
