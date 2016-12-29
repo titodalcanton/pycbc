@@ -506,11 +506,11 @@ class LiveFilterBank(TemplateBank):
                 parameters=parameters, load_compressed=load_compressed,
                 load_compressed_now=load_compressed_now, **kwds)
         self.ensure_standard_filter_columns(low_frequency_cutoff=low_frequency_cutoff)
-        self.table.sort(order='mchirp')
         self.hash_lookup = {}
         for i, p in enumerate(self.table):
             hash_value =  hash((p.mass1, p.mass2, p.spin1z, p.spin2z))
             self.hash_lookup[hash_value] = i
+        self.table.sort(order='mchirp')
 
     def round_up(self, num):
         """Determine the length to use for this waveform by rounding.
