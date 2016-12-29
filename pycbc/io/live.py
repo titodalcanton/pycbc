@@ -190,7 +190,7 @@ class SingleCoincForGraceDB(object):
             snr = TimeSeries(snr, delta_t=delta_t, epoch=start)
             snr.save(filename, group='%s/snr' % ifo)
             stilde.psd.save(filename, group='%s/psd' % ifo)
-        GraceDB().writeFile(graceid, filename)
+        GraceDb().writeFile(graceid, filename)
 
     def save(self, filename):
         """Write this trigger to gracedb compatible xml format
