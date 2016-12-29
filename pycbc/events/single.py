@@ -30,7 +30,7 @@ class LiveSingleFarThreshold(object):
                    duration_threshold=args.single_duration_threshold,
                    )
 
-    def check(self, triggers):
+    def check(self, triggers, data_reader):
         if len(triggers['snr']) == 0:
             return None 
 
@@ -45,6 +45,7 @@ class LiveSingleFarThreshold(object):
             d = {key: triggers[key][i] for key in triggers}
             d['stat'] = nsnr
             d['ifar'] = self.fixed_ifar
-            return SingleForGraceDB(self.ifo, d)
+            return SingleForGraceDB(self.ifo, d, 
+                                    hardware_injection=data_reader.near_hwinj())
         else:
             return None        

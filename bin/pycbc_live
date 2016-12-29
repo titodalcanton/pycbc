@@ -97,11 +97,11 @@ class LiveEventManager(object):
 
             logging.info('saving coinc to xml %s', fname)
 
-    def check_singles(self, results, psds, low_frequency_cutoff):
+    def check_singles(self, results, data_reader, psds, low_frequency_cutoff):
         active = [k for k in results if results[k] != None]
         if len(active) == 1:
             ifo = active[0]
-            single = sngl_estimator[ifo].check(results[ifo])
+            single = sngl_estimator[ifo].check(results[ifo], data_reader[ifo])
             if single is not None:
                 fname = 'single-%s-%10.2f.xml' % (ifo, single.time)
                 if args.enable_single_detector_upload:
@@ -415,7 +415,7 @@ with ctx:
 
             # Check for singles if we don't have coinc time
             if args.enable_single_detector_background:
-                evnt.check_singles(results, psds, args.low_frequency_cutoff)
+                evnt.check_singles(results, data_reader, psds, args.low_frequency_cutoff)
 
             prefix = '%s-%s-%s-%s' % (''.join(ifos), args.file_prefix, data_end() - args.analysis_chunk, valid_pad)
             evnt.dump(results, prefix, time_index=data_end(),

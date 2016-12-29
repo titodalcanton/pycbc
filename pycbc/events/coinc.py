@@ -897,24 +897,6 @@ class LiveCoincTimeslideBackgroundEstimator(object):
             self.singles[ifo].discard_last(updated_singles[ifo])
         self.coincs.remove(num_coincs)
 
-    def check_for_hwinj(self, data_reader, valid_ifos):
-        """Check that the current set of triggers could be influenced by
-        a hardware injection.
-
-        Parameters
-        ----------
-        data_reader: dict of StrainBuffers
-            A dict of StrainBuffer instances, indexed by ifos.
-        """
-        from pycbc import frame
-        for ifo in valid_ifos:
-            start = data_reader[ifo].start_time
-            state = data_reader[ifo].state
-            if not state.is_extent_valid(start, self.analysis_block,
-                                         frame.NO_HWINJ):
-                return True
-        return False
-
     def add_singles(self, results, data_reader):
         """Add singles to the bacckground estimate and find candidates
 
@@ -947,7 +929,9 @@ class LiveCoincTimeslideBackgroundEstimator(object):
 
         # If there is a hardware injection anywhere near here dump these
         # results and mark the result group as possibly being influenced
-        if self.check_for_hwinj(data_reader, valid_ifos):
-            self.backout_last(updated_indices, num_background)
-            coinc_results['HWINJ'] = True
+        for ifo in valid_ifos:
+            if data_reader[ifo].near_hwinj():
+                self.backout_last(updated_indices, num_background)
+                coinc_results['HWINJ'] = True
+                break
         return coinc_results

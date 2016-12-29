@@ -1366,6 +1366,23 @@ class StrainBuffer(pycbc.frame.DataBuffer):
         stilde = self.segments[delta_f]
         return stilde  
 
+    def near_hwinj(self):
+        """Check that the current set of triggers could be influenced by
+        a hardware injection.
+
+        Parameters
+        ----------
+        data_reader: dict of StrainBuffers
+            A dict of StrainBuffer instances, indexed by ifos.
+        """
+        from pycbc import frame
+        if not self.state:
+            return False
+
+        if not self.state.is_extent_valid(self.start, self.blocksize, frame.NO_HWINJ):
+            return True
+        return False
+
     def null_advance_strain(self, blocksize):
         """ Advance and insert zeros
         Parameters
