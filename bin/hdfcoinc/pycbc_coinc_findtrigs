@@ -232,6 +232,21 @@ for tnum in range(tmin, tmax):
     logging.info('Calculating Multi-Detector Combined Statistic')
     c = rank_method.coinc(s0[i0], s1[i1], slide, args.timeslide_interval)
 
+    # for coincs which had BAYESTAR ran on them, modify c to include log(BCI)
+    if bf_log_bci is not None:
+        for k, (trigid0, trigid1) in enumerate(zip(tid0[i0], tid1[i1])):
+            mask = numpy.logical_and(trigid0 == bf_ti0, trigid1 == bf_ti1)
+            mask_nz = numpy.flatnonzero(mask)
+            if len(mask_nz) == 1:
+                logging.warn('Template %d: found Bayes factor', tnum)
+                # eq 2 of Nitz et al 2017
+                mod_stat = c[k] ** 2 + 2 * bf_log_bci[mask_nz[0]]
+                if mod_stat < 0:
+                    mod_stat = 0.
+                c[k] = mod_stat ** 0.5
+            elif len(mask_nz) > 1:
+                raise RuntimeError('{} matches, what is going on?'.format(len(mask_nz)))
+
     #index values of the zerolag triggers
     fi = numpy.where(slide == 0)[0]
 
@@ -275,20 +290,7 @@ for tnum in range(tmin, tmax):
     del i0
     del i1
 
-    # if bayes_factors has an entry with trigger_id1=g0 and trigger_id2=g1,
-    # modify the corresponding c to include log(BCI)
-    c_ti = c[ti]
-    if bf_log_bci is not None:
-        for k, (trigid0, trigid1) in enumerate(zip(tid0[g0], tid1[g1])):
-            mask = numpy.logical_and(trigid0 == bf_ti0, trigid1 == bf_ti1)
-            mask_nz = numpy.flatnonzero(mask)
-            if len(mask_nz) == 1:
-                logging.warn('Template %d: found Bayes factor', tnum)
-                c_ti[k] += bf_log_bci[mask_nz[0]]
-            elif len(mask_nz) > 1:
-                raise RuntimeError('{} matches, what is going on?'.format(len(mask_nz)))
-
-    data['stat'] += [c_ti]
+    data['stat'] += [c[ti]]
     dec_fac = numpy.repeat([args.decimation_factor, 1, 1],
                            [len(bl), len(bh), len(fi)]).astype(numpy.uint32)
     data['decimation_factor'] += [dec_fac]
