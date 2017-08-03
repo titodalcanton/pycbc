@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import h5py, argparse, logging, numpy, numpy.random
+import h5py, argparse, logging, numpy
 from pycbc import events, detector
 from pycbc.events import veto, coinc, stat
 import pycbc.version
@@ -204,8 +204,8 @@ data = {'stat':[], 'decimation_factor':[], 'time1':[], 'time2':[],
 
 if args.bayes_factor_file:
     bff = h5py.File(args.bayes_factor_file, 'r')
-    bf_ti0 = bff['single_trigger_id_{}'.format(det0)]
-    bf_ti1 = bff['single_trigger_id_{}'.format(det1)]
+    bf_ti0 = bff['single_trigger_id_' + trigs0.ifo]
+    bf_ti1 = bff['single_trigger_id_' + trigs1.ifo]
     bf_log_bci = bff['bayestar']['bayestar_log_bci']
 else:
     bf_ti0 = bf_ti1 = bf_log_bci = None
@@ -280,9 +280,10 @@ for tnum in range(tmin, tmax):
     c_ti = c[ti]
     if bf_log_bci is not None:
         for k, (trigid0, trigid1) in enumerate(zip(tid0[g0], tid1[g1])):
-            mask = np.logical_and(trigid0 == bf_ti0, trigid1 == bf_ti1)
-            mask_nz = np.flatnonzero(mask)
+            mask = numpy.logical_and(trigid0 == bf_ti0, trigid1 == bf_ti1)
+            mask_nz = numpy.flatnonzero(mask)
             if len(mask_nz) == 1:
+                logging.warn('Template %d: found Bayes factor', tnum)
                 c_ti[k] += bf_log_bci[mask_nz[0]]
             elif len(mask_nz) > 1:
                 raise RuntimeError('{} matches, what is going on?'.format(len(mask_nz)))
