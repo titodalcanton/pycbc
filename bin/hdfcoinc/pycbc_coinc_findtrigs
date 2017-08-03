@@ -43,6 +43,7 @@ parser.add_argument("--template-fraction-range", default="0/1",
 parser.add_argument("--cluster-window", type=float,
                     help="Optional, window size in seconds to cluster "
                     "coincidences over the bank")
+parser.add_argument('--bayes-factor-file', type=str)
 parser.add_argument("--output-file",
                     help="File to store the coincident triggers")
 args = parser.parse_args()
@@ -201,6 +202,14 @@ logging.info('The coincidence window is %3.1f ms' % (time_window * 1000))
 data = {'stat':[], 'decimation_factor':[], 'time1':[], 'time2':[],
         'trigger_id1':[], 'trigger_id2':[], 'timeslide_id':[], 'template_id':[]}
 
+if args.bayes_factor_file:
+    bff = h5py.File(args.bayes_factor_file, 'r')
+    bf_ti0 = bff['single_trigger_id_{}'.format(det0)]
+    bf_ti1 = bff['single_trigger_id_{}'.format(det1)]
+    bf_log_bci = bff['bayestar']['bayestar_log_bci']
+else:
+    bf_ti0 = bf_ti1 = bf_log_bci = None
+
 for tnum in range(tmin, tmax):
     tid0 = trigs0.set_template(tnum)
     tid1 = trigs1.set_template(tnum)
@@ -266,7 +275,19 @@ for tnum in range(tmin, tmax):
     del i0
     del i1
 
-    data['stat'] += [c[ti]]
+    # if bayes_factors has an entry with trigger_id1=g0 and trigger_id2=g1,
+    # modify the corresponding c to include log(BCI)
+    c_ti = c[ti]
+    if bf_log_bci is not None:
+        for k, (trigid0, trigid1) in enumerate(zip(tid0[g0], tid1[g1])):
+            mask = np.logical_and(trigid0 == bf_ti0, trigid1 == bf_ti1)
+            mask_nz = np.flatnonzero(mask)
+            if len(mask_nz) == 1:
+                c_ti[k] += bf_log_bci[mask_nz[0]]
+            elif len(mask_nz) > 1:
+                raise RuntimeError('{} matches, what is going on?'.format(len(mask_nz)))
+
+    data['stat'] += [c_ti]
     dec_fac = numpy.repeat([args.decimation_factor, 1, 1],
                            [len(bl), len(bh), len(fi)]).astype(numpy.uint32)
     data['decimation_factor'] += [dec_fac]
