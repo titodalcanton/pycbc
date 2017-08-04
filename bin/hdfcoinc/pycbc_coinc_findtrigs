@@ -204,9 +204,10 @@ data = {'stat':[], 'decimation_factor':[], 'time1':[], 'time2':[],
 
 if args.bayes_factor_file:
     bff = h5py.File(args.bayes_factor_file, 'r')
-    bf_ti0 = bff['single_trigger_id_' + trigs0.ifo]
-    bf_ti1 = bff['single_trigger_id_' + trigs1.ifo]
-    bf_log_bci = bff['bayestar']['bayestar_log_bci']
+    bf_ti0 = bff['single_trigger_id_' + trigs0.ifo][:]
+    bf_ti1 = bff['single_trigger_id_' + trigs1.ifo][:]
+    bf_template = bff['template_id'][:]
+    bf_log_bci = bff['bayestar']['bayestar_log_bci'][:]
 else:
     bf_ti0 = bf_ti1 = bf_log_bci = None
 
@@ -234,13 +235,17 @@ for tnum in range(tmin, tmax):
 
     # for coincs which had BAYESTAR ran on them, modify c to include log(BCI)
     if bf_log_bci is not None:
+        template_mask = (bf_template == tnum)
+        template_bf_ti0 = bf_ti0[template_mask]
+        template_bf_ti1 = bf_ti1[template_mask]
         for k, (trigid0, trigid1) in enumerate(zip(tid0[i0], tid1[i1])):
-            mask = numpy.logical_and(trigid0 == bf_ti0, trigid1 == bf_ti1)
+            mask = numpy.logical_and(trigid0 == template_bf_ti0,
+                                     trigid1 == template_bf_ti1)
             mask_nz = numpy.flatnonzero(mask)
             if len(mask_nz) == 1:
                 logging.warn('Template %d: found Bayes factor', tnum)
                 # eq 2 of Nitz et al 2017
-                mod_stat = c[k] ** 2 + 2 * bf_log_bci[mask_nz[0]]
+                mod_stat = c[k] ** 2 + 2 * bf_log_bci[template_mask][mask_nz[0]]
                 if mod_stat < 0:
                     mod_stat = 0.
                 c[k] = mod_stat ** 0.5
