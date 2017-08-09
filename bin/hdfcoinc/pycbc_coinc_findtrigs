@@ -4,6 +4,25 @@ from pycbc import events, detector
 from pycbc.events import veto, coinc, stat
 import pycbc.version
 
+
+def mod_stat_eq2nitz2017(orig_stat, bayestar_log_bci):
+    # combination based on eq 2 of Nitz et al 2017
+    temp = orig_stat ** 2 + 2 * bayestar_log_bci
+    if temp < 0:
+        temp = 0.
+    return temp ** 0.5
+
+def mod_stat_o2like(orig_stat, bayestar_log_bci):
+    # combination resembling what is done in O2 for including
+    # the phase-time-amplitude distribution expected for signals
+    sqrt2 = 2 ** 0.5
+    alpha_ref = 6.
+    temp = orig_stat * sqrt2 + bayestar_log_bci / alpha_ref
+    if temp < 8:
+        temp = 8.
+    return temp / sqrt2
+
+
 parser = argparse.ArgumentParser()
 parser.add_argument("--verbose", action="count")
 parser.add_argument("--version", action="version", version=pycbc.version.git_verbose_msg)
@@ -44,6 +63,7 @@ parser.add_argument("--cluster-window", type=float,
                     help="Optional, window size in seconds to cluster "
                     "coincidences over the bank")
 parser.add_argument('--bayes-factor-file', type=str)
+parser.add_argument('--bf-mod-stat', type=str, choices=['eq2nitz2017', 'o2like'])
 parser.add_argument("--output-file",
                     help="File to store the coincident triggers")
 args = parser.parse_args()
@@ -211,6 +231,13 @@ if args.bayes_factor_file:
 else:
     bf_ti0 = bf_ti1 = bf_log_bci = None
 
+if args.bf_mod_stat == 'eq2nitz2017':
+    mod_stat = mod_stat_eq2nitz2017
+elif args.bf_mod_stat == 'o2like':
+    mod_stat = mod_stat_o2like
+else:
+    mod_stat = None
+
 for tnum in range(tmin, tmax):
     tid0 = trigs0.set_template(tnum)
     tid1 = trigs1.set_template(tnum)
@@ -244,11 +271,7 @@ for tnum in range(tmin, tmax):
             mask_nz = numpy.flatnonzero(mask)
             if len(mask_nz) == 1:
                 logging.warn('Template %d: found Bayes factor', tnum)
-                # eq 2 of Nitz et al 2017
-                mod_stat = c[k] ** 2 + 2 * bf_log_bci[template_mask][mask_nz[0]]
-                if mod_stat < 0:
-                    mod_stat = 0.
-                c[k] = mod_stat ** 0.5
+                c[k] = mod_stat(c[k], bf_log_bci[template_mask][mask_nz[0]])
             elif len(mask_nz) > 1:
                 raise RuntimeError('{} matches, what is going on?'.format(len(mask_nz)))
 
