@@ -5,11 +5,11 @@ import numpy
 import lal
 import json
 from six import u as unicode
-from glue.ligolw import ligolw
-from glue.ligolw import lsctables
-from glue.ligolw import utils as ligolw_utils
-from glue.ligolw.utils import process as ligolw_process
-from glue.ligolw import param as ligolw_param
+from ligo.lw import ligolw
+from ligo.lw import lsctables
+from ligo.lw import utils as ligolw_utils
+from ligo.lw.utils import process as ligolw_process
+from ligo.lw import param as ligolw_param
 from pycbc import version as pycbc_version
 from pycbc import pnutils
 from pycbc.tmpltbank import return_empty_sngl
@@ -20,7 +20,7 @@ from pycbc.mchirp_area import calc_probabilities
 #FIXME Legacy build PSD xml helpers, delete me when we move away entirely from
 # xml formats
 def _build_series(series, dim_names, comment, delta_name, delta_unit):
-    from glue.ligolw import array as ligolw_array
+    from ligo.lw import array as ligolw_array
     Attributes = ligolw.sax.xmlreader.AttributesImpl
     elem = ligolw.LIGO_LW(
             Attributes({u"Name": unicode(series.__class__.__name__)}))

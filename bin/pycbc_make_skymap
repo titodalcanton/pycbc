@@ -16,7 +16,7 @@ from pycbc.types import TimeSeries, FrequencySeries, MultiDetOptionAppendAction
 from pycbc.pnutils import nearest_larger_binary_number
 from pycbc.waveform.spa_tmplt import spa_length_in_time
 from pycbc import frame
-from glue.ligolw import utils as ligolw_utils
+from ligo.lw import utils as ligolw_utils
 from ligo.gracedb.rest import GraceDb
 
 
