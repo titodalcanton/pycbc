@@ -247,7 +247,7 @@ class SingleCoincForGraceDB(object):
         # This seems to be used as FAP, which should not be in gracedb
         coinc_inspiral_row.false_alarm_rate = 0
         coinc_inspiral_row.minimum_duration = 0.
-        coinc_inspiral_row.set_ifos(usable_ifos)
+        coinc_inspiral_row.instruments = tuple(usable_ifos)
         coinc_inspiral_row.coinc_event_id = coinc_id
         coinc_inspiral_row.mchirp = sngl_populated.mchirp
         coinc_inspiral_row.mass = sngl_populated.mtotal
