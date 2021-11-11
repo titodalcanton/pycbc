@@ -581,7 +581,7 @@ class DataBuffer(object):
         end = float(start + blocksize)
 
         if not hasattr(self, 'dur'):
-            fname = glob.glob(self.frame_src[0])[0]
+            fname = sorted(glob.glob(self.frame_src[0]))[0]
             fname = os.path.splitext(os.path.basename(fname))[0].split('-')
 
             self.beg = '-'.join([fname[0], fname[1]])
