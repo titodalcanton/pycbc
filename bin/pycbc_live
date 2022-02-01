@@ -148,20 +148,20 @@ class LiveEventManager(object):
         # pop up, with a timeout. The timeout starts from the last complete
         # response of the entire worker pool in order to avoid causing an
         # accumulation of lag
-        glob_expr = "{}/{:.4f}/*.pickle".format(self.io_path, end_time)
+        glob_expr = "{}/{:.4f}_*.pickle".format(self.io_path, end_time)
         while len(all_results) < self.size and pycbc.gps_now() - self.last_successful_gather_time < self.io_timeout:
             for path in glob.glob(glob_expr):
                 with open(path, "rb") as pf:
                     all_results.append(pickle.load(pf))
                 os.remove(path)
-            if len(all_results) == self.size:
+            if len(all_results) == self.size - 1:
                 break
             sleep(0.05)
 
         # here we could decide, for example, to proceed with the analysis even
         # if we are missing results from one or two worker processes
 
-        if len(all_results) != self.size:
+        if len(all_results) != self.size - 1:
             logging.warning(
                 "Timed out waiting for single detector triggers"
                 " for end time %.4f",
