@@ -17,8 +17,8 @@ import platform
 import subprocess
 from matplotlib import use
 use('agg')
+import pickle
 from shutil import which
-from mpi4py import MPI as mpi
 from pycbc.pool import BroadcastPool
 from pycbc import fft, version, waveform, scheme, makedir
 from pycbc.types import MultiDetOptionAction, MultiDetMultiColonOptionAction
@@ -81,10 +81,9 @@ class LiveEventManager(object):
         self.mc_area_args = mc_area_args
         self.padata = p_astro_data
 
-        # Figure out what we are supposed to process within the pool of MPI processes
-        self.comm = mpi.COMM_WORLD
-        self.size = self.comm.Get_size()
-        self.rank = self.comm.Get_rank()
+        # figure out what we are supposed to process within the pool of processes
+        self.size = args.size
+        self.rank = args.rank
 
         self.use_date_prefix = use_date_prefix
         self.ifar_upload_threshold = ifar_upload_threshold
@@ -113,25 +112,46 @@ class LiveEventManager(object):
 
     def commit_results(self, results):
         logging.info('Committing triggers')
-        self.comm.gather(results, root=0)
+        final_pickle_path = "{base}/{end_time:.4f}_{rank:03d}.pickle".format(
+            base=args.io_path, rank=self.rank, end_time=results[0]
+        )
+        temp_pickle_path = final_pickle_path + '.temp'
+        pickle.dump(results, temp_pickle_path)
+        os.rename(temp_pickle_path, final_pickle_path)
 
-    def barrier(self):
-        self.comm.Barrier()
-
-    def barrier_status(self, status):
-        return self.comm.allreduce(status, op=mpi.LAND)
-
-    def gather_results(self):
-        """ Collect results from the mpi subprocesses and collate them into
+    def gather_results(self, end_time, timeout=100):
+        """Collect results from the worker nodes and collate them into
         contiguous sets of arrays.
         """
-
         if self.rank != 0:
-            raise RuntimeError('Not root process')
+            raise RuntimeError("Not root process")
 
-        logging.info('Gathering triggers')
-        all_results = self.comm.gather(None, root=0)
+        all_results = []
+
+        # wait for all single detector triggers from the worker processes to
+        # pop up, with a timeout
+        glob_expr = "{}/{:.4f}/*.pickle".format(args.io_path, end_time)
+        timer_start = pycbc.gps_now()
+        while len(all_results) < self.size and pycbc.gps_now() - timer_start < timeout:
+            for path in glob.glob(glob_expr):
+                all_results.append(pickle.load(path))
+                os.remove(path)
+            if len(all_results) == self.size:
+                break
+
+        if len(all_results) != self.size:
+            logging.warn(
+                "Timed out waiting for single detector triggers"
+                " for end time %.4f",
+                end_time
+            )
+            return {}
+
+        # do a few paranoid checks that we are indeed in sync
         data_ends = [a[1] for a in all_results if a is not None]
+        assert len(set(data_ends)) == 1
+        assert data_ends[0] == end_time
+
         results = [a[0] for a in all_results if a is not None]
 
         combined = {}
@@ -147,7 +167,7 @@ class LiveEventManager(object):
             for key in results[0][ifo]:
                 combined[ifo][key] = numpy.concatenate([r[ifo][key] for r in results])
 
-        return combined, data_ends[0]
+        return combined
 
     def compute_followup_data(self, ifos, triggers, data_readers, bank,
                               followup_ifos=None, recalculate_ifar=False):
@@ -576,6 +596,13 @@ class LiveEventManager(object):
 
 parser = argparse.ArgumentParser(description=__doc__)
 pycbc.waveform.bank.add_approximant_arg(parser)
+parser.add_argument("--size", type=int, required=True,
+                    help="Total number of processes in the pool")
+parser.add_argument("--rank", type=int, required=True,
+                    help="Identifier for this process in the pool")
+parser.add_argument("--io-path", required=True,
+                    help="Path to a temporary directory in a shared filesystem"
+                    " where processes can exchange data")
 parser.add_argument('--verbose', action='store_true')
 parser.add_argument('--version', action='version', version=version.git_verbose_msg)
 parser.add_argument('--bank-file', required=True,
@@ -654,11 +681,6 @@ parser.add_argument('--autogating-taper', type=float, metavar='SECONDS',
                          'each gating window over a duration '
                          'of SECONDS.')
 
-parser.add_argument('--sync', action='store_true',
-                    help="Imposes an MPI synchronization at each transfer of"
-                         " single-detector triggers. Can help with debugging"
-                         " and avoiding memory issues when running offline"
-                         " analyses.")
 parser.add_argument('--increment-update-cache', action=MultiDetOptionAction, nargs='+')
 parser.add_argument('--frame-read-timeout', type=float, default=30)
 parser.add_argument('--increment', type=int, default=8, metavar="T",
@@ -769,7 +791,7 @@ if not args.enable_gracedb_upload and args.enable_single_detector_upload:
                  '--enable-gracedb-upload option!')
 
 log_format = '%(asctime)s {} {} %(message)s'.format(platform.node(),
-                                                    mpi.COMM_WORLD.Get_rank())
+                                                    args.rank)
 pycbc.init_logging(args.verbose, format=log_format)
 
 ctx = scheme.from_cli(args)
@@ -855,15 +877,9 @@ with ctx:
                                     max_triggers_in_batch=args.max_triggers_in_batch,
                                     maxelements=args.max_batch_size)
 
-    # Synchronize start time if not provided on the command line
-    if not args.start_time:
-        evnt.barrier()
-        tnow = int(pycbc.gps_now()) if evnt.rank == 0 else None
-        args.start_time = evnt.comm.bcast(tnow, root=0)
-
     if args.round_start_time:
-        args.start_time = int(args.start_time / args.round_start_time + 1) * args.round_start_time
-        logging.info('Starting from: %s', args.start_time)
+        args.start_time = (args.start_time // args.round_start_time) * args.round_start_time
+        logging.info('Starting from %s', args.start_time)
 
     # initialize the data readers for all detectors
     if args.max_length is not None:
@@ -957,7 +973,7 @@ with ctx:
 
             # Collect together the single detector triggers
             if evnt.size > 1:
-                results, valid_end = evnt.gather_results()
+                results = evnt.gather_results()
 
             # veto detectors with different state between the root
             # and worker nodes (e.g. late frame files on one node only)
@@ -1034,8 +1050,6 @@ with ctx:
 
             logging.info('Finished Analyzing up to %s', data_end())
 
-        if args.sync:
-            evnt.barrier()
         tdiff = pycbc.gps_now() - t1
         lag = float(pycbc.gps_now() - data_end())
         logging.info('Took %1.2f, duty factor of %.2f, '
