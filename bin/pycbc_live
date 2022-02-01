@@ -118,7 +118,10 @@ class LiveEventManager(object):
                 self.fu_cores = 1
 
     def commit_results(self, results):
-        logging.info('Committing triggers')
+        logging.info(
+            "Committing single detector triggers for end time %.4f",
+            results[1]
+        )
         final_pickle_path = "{base}/{end_time:.4f}_{rank:03d}.pickle".format(
             base=self.io_path, end_time=results[1], rank=self.rank
         )
@@ -133,6 +136,11 @@ class LiveEventManager(object):
         """
         if self.rank != 0:
             raise RuntimeError("Not root process")
+
+        logging.info(
+            "Gathering single-detector triggers for end time %.4f",
+            end_time
+        )
 
         all_results = []
 
