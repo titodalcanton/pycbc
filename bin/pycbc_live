@@ -132,8 +132,7 @@ class LiveEventManager(object):
         # wait for all single detector triggers from the worker processes to
         # pop up, with a timeout
         glob_expr = "{}/{:.4f}/*.pickle".format(args.io_path, end_time)
-        timer_start = pycbc.gps_now()
-        while len(all_results) < self.size and pycbc.gps_now() - timer_start < timeout:
+        while len(all_results) < self.size and pycbc.gps_now() - end_time < timeout:
             for path in glob.glob(glob_expr):
                 all_results.append(pickle.load(path))
                 os.remove(path)
@@ -144,7 +143,7 @@ class LiveEventManager(object):
         # if we are missing results from one or two worker processes
 
         if len(all_results) != self.size:
-            logging.warn(
+            logging.warning(
                 "Timed out waiting for single detector triggers"
                 " for end time %.4f",
                 end_time
