@@ -19,6 +19,7 @@ from matplotlib import use
 use('agg')
 import pickle
 import glob
+from time import sleep
 from shutil import which
 from pycbc.pool import BroadcastPool
 from pycbc import fft, version, waveform, scheme, makedir
@@ -77,7 +78,8 @@ class LiveEventManager(object):
                  pval_livetime=None,
                  enable_gracedb_upload=False,
                  gracedb_testing=True,
-                 run_snr_optimization=False):
+                 run_snr_optimization=False,
+                 **kwargs):
         self.path = output_path
         self.mc_area_args = mc_area_args
         self.padata = p_astro_data
@@ -85,6 +87,10 @@ class LiveEventManager(object):
         # figure out what we are supposed to process within the pool of processes
         self.size = args.size
         self.rank = args.rank
+
+        self.io_path = kwargs["io_path"]
+        self.io_timeout = kwargs["io_timeout"]
+        self.last_successful_gather_time = pycbc.gps_now()
 
         self.use_date_prefix = use_date_prefix
         self.ifar_upload_threshold = ifar_upload_threshold
@@ -114,13 +120,13 @@ class LiveEventManager(object):
     def commit_results(self, results):
         logging.info('Committing triggers')
         final_pickle_path = "{base}/{end_time:.4f}_{rank:03d}.pickle".format(
-            base=args.io_path, rank=self.rank, end_time=results[0]
+            base=self.io_path, rank=self.rank, end_time=results[0]
         )
         temp_pickle_path = final_pickle_path + '.temp'
         pickle.dump(results, temp_pickle_path)
         os.rename(temp_pickle_path, final_pickle_path)
 
-    def gather_results(self, end_time, timeout=100):
+    def gather_results(self, end_time):
         """Collect results from the worker nodes and collate them into
         contiguous sets of arrays.
         """
@@ -130,14 +136,17 @@ class LiveEventManager(object):
         all_results = []
 
         # wait for all single detector triggers from the worker processes to
-        # pop up, with a timeout
-        glob_expr = "{}/{:.4f}/*.pickle".format(args.io_path, end_time)
-        while len(all_results) < self.size and pycbc.gps_now() - end_time < timeout:
+        # pop up, with a timeout. The timeout starts from the last complete
+        # response of the entire worker pool in order to avoid causing an
+        # accumulation of lag
+        glob_expr = "{}/{:.4f}/*.pickle".format(self.io_path, end_time)
+        while len(all_results) < self.size and pycbc.gps_now() - self.last_successful_gather_time < self.io_timeout:
             for path in glob.glob(glob_expr):
                 all_results.append(pickle.load(path))
                 os.remove(path)
             if len(all_results) == self.size:
                 break
+            sleep(0.05)
 
         # here we could decide, for example, to proceed with the analysis even
         # if we are missing results from one or two worker processes
@@ -149,6 +158,8 @@ class LiveEventManager(object):
                 end_time
             )
             return {}
+
+        self.last_successful_gather_time = pycbc.gps_now()
 
         # do a few paranoid checks that we are indeed in sync
         data_ends = [a[1] for a in all_results if a is not None]
@@ -606,6 +617,9 @@ parser.add_argument("--rank", type=int, required=True,
 parser.add_argument("--io-path", required=True,
                     help="Path to a temporary directory in a shared filesystem"
                     " where processes can exchange data")
+parser.add_argument("--io-timeout", type=int, required=True,
+                    help="How many seconds to wait for single-detector"
+                    " triggers to show up before giving up")
 parser.add_argument('--verbose', action='store_true')
 parser.add_argument('--version', action='version', version=version.git_verbose_msg)
 parser.add_argument('--bank-file', required=True,
@@ -825,7 +839,9 @@ evnt = LiveEventManager(args.output_path,
                         pval_livetime=args.pvalue_combination_livetime,
                         enable_gracedb_upload=args.enable_gracedb_upload,
                         gracedb_testing=not args.enable_production_gracedb_upload,
-                        run_snr_optimization=args.run_snr_optimization)
+                        run_snr_optimization=args.run_snr_optimization,
+                        io_path=args.io_path,
+                        io_timeout=args.io_timeout)
 
 # include MPI rank and functional description into proctitle
 task_name = 'root' if evnt.rank == 0 else 'filtering'
