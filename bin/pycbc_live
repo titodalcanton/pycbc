@@ -120,10 +120,11 @@ class LiveEventManager(object):
     def commit_results(self, results):
         logging.info('Committing triggers')
         final_pickle_path = "{base}/{end_time:.4f}_{rank:03d}.pickle".format(
-            base=self.io_path, rank=self.rank, end_time=results[0]
+            base=self.io_path, end_time=results[1], rank=self.rank
         )
         temp_pickle_path = final_pickle_path + '.temp'
-        pickle.dump(results, temp_pickle_path)
+        with open(temp_pickle_path, "wb") as pf:
+            pickle.dump(results, pf)
         os.rename(temp_pickle_path, final_pickle_path)
 
     def gather_results(self, end_time):
@@ -142,7 +143,8 @@ class LiveEventManager(object):
         glob_expr = "{}/{:.4f}/*.pickle".format(self.io_path, end_time)
         while len(all_results) < self.size and pycbc.gps_now() - self.last_successful_gather_time < self.io_timeout:
             for path in glob.glob(glob_expr):
-                all_results.append(pickle.load(path))
+                with open(path, "rb") as pf:
+                    all_results.append(pickle.load(pf))
                 os.remove(path)
             if len(all_results) == self.size:
                 break
