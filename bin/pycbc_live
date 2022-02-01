@@ -139,6 +139,9 @@ class LiveEventManager(object):
             if len(all_results) == self.size:
                 break
 
+        # here we could decide, for example, to proceed with the analysis even
+        # if we are missing results from one or two worker processes
+
         if len(all_results) != self.size:
             logging.warn(
                 "Timed out waiting for single detector triggers"
