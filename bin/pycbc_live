@@ -127,18 +127,16 @@ class LiveEventManager(object):
             results = [a[0] for a in all_results if a is not None]
 
             combined = {}
-            for ifo in results[0]:
-
+            for ifo in self.detector_network:
+                results_for_ifo = [r[ifo] for r in results if ifo in r]
                 # check if any of the results returned invalid
-                try:
-                    for r in results:
-                        if r[ifo] is False:
-                            raise ValueError
-                except ValueError:
+                if False in results_for_ifo:
                     continue
                 combined[ifo] = {}
-                for key in results[0][ifo]:
-                    combined[ifo][key] = numpy.concatenate([r[ifo][key] for r in results])
+                for key in results_for_ifo[0]:
+                    combined[ifo][key] = numpy.concatenate([
+                        r[key] for r in results_for_ifo
+                    ])
 
             return combined, data_ends[0]
         else:
@@ -688,17 +686,17 @@ evnt = LiveEventManager(args.output_path,
 # Assuming an HLV analysis, we want the following assignment:
 # rank:      0   1 2 3 4 5 6 7 8 9 ...
 # detectors: HLV H L V H L V H L V ...
-detector_network = set(args.channel_name.keys())
-if (evnt.size - 1) % len(detector_network) != 0:
+evnt.detector_network = set(args.channel_name.keys())
+if (evnt.size - 1) % len(evnt.detector_network) != 0:
     parser.error(
         "Invalid configuration, the number of MPI procs must equal "
         "one plus an integer multiple of the number of detectors"
     )
 if evnt.rank == 0:
-    ifos = detector_network
+    ifos = evnt.detector_network
 else:
-    index = (envt.rank - 1) % len(detector_network)
-    ifos = set([sorted(detector_network)[index]])
+    index = (evnt.rank - 1) % len(evnt.detector_network)
+    ifos = set([sorted(evnt.detector_network)[index]])
     del index
 logging.info('Analyzing data from detector(s) %s', ppdets(ifos))
 
@@ -749,9 +747,9 @@ with ctx:
         # detector:   HLV H L V H L V H L V ...
         # bank slice: -   0 0 0 1 1 1 2 2 2 ...
         bank_slice = slice(
-            (evnt.rank - 1) // len(detector_network),
+            (evnt.rank - 1) // len(evnt.detector_network),
             None,
-            (evnt.size - 1) // len(detector_network)
+            (evnt.size - 1) // len(evnt.detector_network)
         )
         waveforms = list(bank[bank_slice])
         del bank_slice
