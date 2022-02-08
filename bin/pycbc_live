@@ -675,9 +675,6 @@ if bank.min_f_lower < args.low_frequency_cutoff:
                  'minimum f_lower across all templates '
                  '({} Hz)'.format(args.low_frequency_cutoff, bank.min_f_lower))
 
-ifos = set(args.channel_name.keys())
-logging.info('Analyzing data from detectors %s', ppdets(ifos))
-
 evnt = LiveEventManager(args.output_path,
                         use_date_prefix=args.day_hour_output_prefix,
                         ifar_upload_threshold=args.ifar_upload_threshold,
@@ -687,8 +684,26 @@ evnt = LiveEventManager(args.output_path,
                         run_snr_optimization=args.run_snr_optimization,
                         mc_area_args=mchirp_area.from_cli(args))
 
+# figure out which detector(s) should be processed by this process.
+# Assuming an HLV analysis, we want the following assignment:
+# rank:      0   1 2 3 4 5 6 7 8 9 ...
+# detectors: HLV H L V H L V H L V ...
+detector_network = set(args.channel_name.keys())
+if (evnt.size - 1) % len(detector_network) != 0:
+    parser.error(
+        "Invalid configuration, the number of MPI procs must equal "
+        "one plus an integer multiple of the number of detectors"
+    )
+if evnt.rank == 0:
+    ifos = detector_network
+else:
+    index = (envt.rank - 1) % len(detector_network)
+    ifos = set([sorted(detector_network)[index]])
+    del index
+logging.info('Analyzing data from detector(s) %s', ppdets(ifos))
+
 # include MPI rank and functional description into proctitle
-task_name = 'root' if evnt.rank == 0 else 'filtering'
+task_name = 'root' if evnt.rank == 0 else 'filtering {}'.format(list(ifos)[0])
 setproctitle('PyCBC Live rank {:d} [{}]'.format(evnt.rank, task_name))
 
 sg_chisq = SingleDetSGChisq.from_cli(args, bank, args.chisq_bins)
@@ -729,7 +744,17 @@ with ctx:
     maxlen = args.psd_segment_length * (args.psd_samples // 2 + 1)
     if evnt.rank > 0:
         bank.table.sort(order='mchirp')
-        waveforms = list(bank[evnt.rank-1::evnt.size-1])
+        # the template assignment to each process is as follows:
+        # rank:       0   1 2 3 4 5 6 7 8 9 ...
+        # detector:   HLV H L V H L V H L V ...
+        # bank slice: -   0 0 0 1 1 1 2 2 2 ...
+        bank_slice = slice(
+            (evnt.rank - 1) // len(detector_network),
+            None,
+            (evnt.size - 1) // len(detector_network)
+        )
+        waveforms = list(bank[bank_slice])
+        del bank_slice
         lengths = numpy.array([1.0 / wf.delta_f for wf in waveforms])
         psd_len = args.psd_segment_length * (args.psd_samples // 2 + 1)
         maxlen = max(lengths.max(), psd_len)
