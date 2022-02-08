@@ -109,8 +109,8 @@ rm -rf ./output
 echo -e "\\n\\n>> [`date`] Running PyCBC Live"
 
 mpirun \
--host localhost,localhost \
--n 2 \
+-host localhost,localhost,localhost,localhost \
+-n 4 \
 -x PYTHONPATH -x LD_LIBRARY_PATH -x OMP_NUM_THREADS -x VIRTUAL_ENV -x PATH -x HDF5_USE_FILE_LOCKING \
 \
 python -m mpi4py `which pycbc_live` \
