@@ -141,7 +141,7 @@ After demarginalization:
    :align: center
 
 ---------------------------------------------------
-Abitrary sampling coordinates with nested samplers
+Arbitrary sampling coordinates with nested samplers
 ---------------------------------------------------
 
 The single template model also supports marginalization over the polarization
