@@ -1,3 +1,5 @@
+set -e
+
 pycbc_inference \
 --config-file `dirname "$0"`/single.ini \
 --nprocesses=1 \
