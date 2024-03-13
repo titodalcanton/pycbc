@@ -305,11 +305,10 @@ def add_banksim_set(workflow, file_tag, num_injs, curr_tags, split_banks):
     banksim_files = wf.FileList([])
 
     for inj_idx, split_inj in enumerate(split_injs):
-        inj_tag = 'INJ{}'.format(inj_idx)
+        inj_tag = f'INJ{inj_idx}'
         currinj_banksim_files = wf.FileList([])
         for bank_idx, split_bank in enumerate(split_banks):
-            bank_tag = 'BANK{}'.format(bank_idx)
-            inj_tag = 'INJ{}'.format(inj_idx)
+            bank_tag = f'BANK{bank_idx}'
             node = banksim_job.create_node(
                 workflow.analysis_time,
                 split_inj,
@@ -392,13 +391,13 @@ broad_inj_summ_files = []
 
 # Set the point injection names
 for f in sorted(output_pointinjs):
-    rdir['point_injection_sets/{}'.format(f)]
+    rdir[f'point_injection_sets/{f}']
 
 curr_node = point_injs_table_exe.create_node(
     workflow.analysis_time,
     [output_pointinjs[f] for f in sorted(output_pointinjs)],
     [
-        '../' + rdir.name['point_injection_sets/{}'.format(f)]
+        '../' + rdir.name[f'point_injection_sets/{f}']
         for f in sorted(output_pointinjs)
     ],
 )
@@ -428,7 +427,7 @@ for tag in sorted(output_broadinjs):
     curr_outs = []
     curr_file = output_broadinjs[tag]
     plot_fitting_facs_exe.update_output_directory(
-        rdir['broad_injection_sets/{}'.format(tag)]
+        rdir[f'broad_injection_sets/{tag}']
     )
     for tag2 in secs:
         plot_fitting_facs_exe.update_current_tags([tag, tag2])
@@ -439,15 +438,13 @@ for tag in sorted(output_broadinjs):
         plotting_nodes.append(curr_node)
         curr_outs.append((curr_node.output_file,))
     # Other outputs could go here, before running the layout
-    layout.two_column_layout(
-        rdir['broad_injection_sets/{}'.format(tag)], curr_outs
-    )
+    layout.two_column_layout(rdir[f'broad_injection_sets/{tag}'], curr_outs)
 
 for tag in sorted(output_pointinjs):
     curr_outs = []
     curr_file = output_pointinjs[tag]
     plot_fitting_facs_exe.update_output_directory(
-        rdir['point_injection_sets/{}'.format(tag)]
+        rdir[f'point_injection_sets/{tag}']
     )
     for tag2 in secs:
         plot_fitting_facs_exe.update_current_tags([tag, tag2])
@@ -458,9 +455,7 @@ for tag in sorted(output_pointinjs):
         plotting_nodes.append(curr_node)
         curr_outs.append((curr_node.output_file,))
     # Other outputs could go here, before running the layout
-    layout.two_column_layout(
-        rdir['point_injection_sets/{}'.format(tag)], curr_outs
-    )
+    layout.two_column_layout(rdir[f'point_injection_sets/{tag}'], curr_outs)
 
 # Save config file(s) to results directory
 layout.single_layout(conf_dir, conf_file)
