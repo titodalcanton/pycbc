@@ -22,13 +22,14 @@ Workflow generator to create diagnosis plots and figures of merit for an input
 template bank.
 """
 
-# imports
 import os
 import argparse
 import shutil
+import logging
 
 from ligo import segments
 
+import pycbc
 import pycbc.version
 import pycbc.workflow as wf
 from pycbc.results import static_table, layout
@@ -179,10 +180,13 @@ class BanksimTablePointInjsExecutable(wf.Executable):
 # so run this with --help to see what options are added.
 _desc = __doc__[1:]
 parser = argparse.ArgumentParser(description=_desc)
+pycbc.add_common_pycbc_options(parser)
 parser.add_argument('--version', action='version', version=__version__)
 wf.add_workflow_command_line_group(parser)
 wf.add_workflow_settings_cli(parser)
 args = parser.parse_args()
+
+pycbc.init_logging(args.verbose)
 
 # FIXME: opts.tags is currently unused here.
 
@@ -328,12 +332,14 @@ def add_banksim_set(workflow, file_tag, num_injs, curr_tags, split_banks):
 
 # Set up the actual banksims
 curr_tags = ['shortinjbanksplit']
+logging.info('Setting up splitting jobs for %s', curr_tags)
 split_banks = setup_splittable_dax_generated(
     workflow, [inp_bank], 'splitbankfiles', curr_tags
 )
 
 output_pointinjs = {}
 for file_tag, num_injs in workflow.cp.items('workflow-pointinjs'):
+    logging.info('Setting up banksim jobs for %s', file_tag)
     curr_tags = ['shortinjs', file_tag]
     curr_file = add_banksim_set(
         workflow, file_tag, num_injs, curr_tags, split_banks
@@ -341,12 +347,14 @@ for file_tag, num_injs in workflow.cp.items('workflow-pointinjs'):
     output_pointinjs[file_tag] = curr_file
 
 curr_tags = ['broadinjbanksplit']
+logging.info('Setting up splitting jobs for %s', curr_tags)
 split_banks = setup_splittable_dax_generated(
     workflow, [inp_bank], 'splitbankfiles', curr_tags
 )
 
 output_broadinjs = {}
 for file_tag, num_injs in workflow.cp.items('workflow-broadinjs'):
+    logging.info('Setting up banksim jobs for %s', file_tag)
     curr_tags = ['broadinjs', file_tag]
     curr_file = add_banksim_set(
         workflow, file_tag, num_injs, curr_tags, split_banks
@@ -458,17 +466,21 @@ for tag in sorted(output_pointinjs):
 layout.single_layout(conf_dir, conf_file)
 
 # Create versioning information
+logging.info('Setting up versioning page')
 wf.make_versioning_page(
     workflow,
     workflow.cp,
     rdir['workflow/version'],
 )
 
-
+logging.info('Setting up results page')
 wf.make_results_web_page(
     workflow,
     os.path.join(os.getcwd(), rdir.base),
     explicit_dependencies=plotting_nodes,
 )
 
+logging.info('Saving workflow')
 workflow.save()
+
+logging.info('Done')
