@@ -24,6 +24,7 @@ import argparse
 import operator
 import os
 import re
+import glob
 from collections import defaultdict
 from functools import reduce
 
@@ -162,10 +163,16 @@ parser.add_argument(
     help="path(s) to input trigger file(s)",
 )
 parser.add_argument(
+    "--input-files-glob"
+)
+parser.add_argument(
     "-j",
     "--inj-files",
     nargs="+",
     help="path(s) to input injection file(s)",
+)
+parser.add_argument(
+    "--inj-files-glob"
 )
 parser.add_argument(
     "--bank-file",
@@ -212,8 +219,25 @@ args = parser.parse_args()
 
 init_logging(args.verbose)
 
-vprint = print if args.verbose else str
-win = args.time_window
+# get list of input trigger files
+
+if args.input_files:
+    input_files = args.input_files
+elif args.input_files_glob:
+    input_files = sorted(glob.glob(args.input_files_glob))
+else:
+    parser.error('Input trigger files not specified')
+logging.info('%d input trigger files', len(input_files))
+
+# get list of input injection files
+
+if args.inj_files:
+    inj_files = args.inj_files
+elif args.inj_files_glob:
+    inj_files = sorted(glob.glob(args.inj_files_glob))
+else:
+    parser.error('Input injection files not specified')
+logging.info('%d input injection files', len(inj_files))
 
 # -- find injections ----------------------------
 
@@ -227,14 +251,14 @@ found = []
 # on triggers to be written to file 
 out_trigs = {}
 # open first injection file
-firstfile = HFile(args.input_files[0], "r")
+firstfile = HFile(input_files[0], "r")
 for key in firstfile.keys():
     # associate ifo names and 'network' with [] so we can append later 
     out_trigs[key] = defaultdict(list)
 
 allinjections = None
 
-with tqdm.tqdm(args.inj_files, desc="Finding injections",
+with tqdm.tqdm(inj_files, desc="Finding injections",
                disable=not args.verbose, unit="files",
                postfix=dict(found=0, missed=0, excluded=nexcluded),
                **TQDM_KW) as bar:
@@ -244,7 +268,7 @@ with tqdm.tqdm(args.inj_files, desc="Finding injections",
             split, = SPLIT_FILENAME.search(injf).groups()
         except AttributeError:  # no regex match
             split = None
-        trigfiles = list(find_split_files(args.input_files, split))
+        trigfiles = list(find_split_files(input_files, split))
 
         # read injections and filter by exclude segments
         tmpinj = InjectionSet(injf).table
@@ -308,7 +332,7 @@ with tqdm.tqdm(args.inj_files, desc="Finding injections",
         )
 
 # prepare output hdf5 file
-ifotag, desc, segment = filename_metadata(args.inj_files[0])
+ifotag, desc, segment = filename_metadata(inj_files[0])
 desc = SPLIT_FILENAME.split(desc)[0]
 outfilename = os.path.join(
     args.output_dir,
