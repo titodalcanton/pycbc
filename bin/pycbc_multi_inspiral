@@ -358,10 +358,12 @@ strain_dict = strain.from_cli_multi_ifos(
 strain_segments_dict = strain.StrainSegments.from_cli_multi_ifos(
     args, strain_dict, args.instruments
 )
+
 # Convenience variables: number of IFOs and sky positions to search over
 # (either a grid or single sky point)
 nifo = len(args.instruments)
 sky_positions = SkyGrid.from_cli(parser, args)
+
 # Check whether the sampling rate, flen and tlen agree for all detectors,
 # taking the first detector in the list as a reference.
 for count, ifo in enumerate(args.instruments):
@@ -380,6 +382,35 @@ for count, ifo in enumerate(args.instruments):
         assert tlen == strain_segments_dict[ifo].time_len, vname + err_msg
         vname = "delta_f (=segment length inverse)"
         assert delta_f == strain_segments_dict[ifo].delta_f, vname + err_msg
+
+logging.info("Determining time slide shifts and time delays")
+# Create a dictionary of time slide shifts; IFO 0 is unshifted
+time_slides = {
+    ifo: args.slide_shift * np.arange(num_slides) * ifo_idx
+    for ifo_idx, ifo in enumerate(args.instruments)
+}
+# Given the time delays wrt to IFO 0 in time_slides, create a dictionary
+# for time delay indices evaluated wrt the geocenter, in units of samples,
+# i.e. (time delay from geocenter + time slide)*sampling_rate
+time_delays_zerolag = sky_positions.calculate_time_delays()
+time_delay_idx = {
+    slide: {
+        position_index: {
+            ifo: round(
+                (
+                    time_delays_zerolag[ifo][position_index]
+                    + time_slides[ifo][slide]
+                )
+                * sample_rate
+            )
+            for ifo in args.instruments
+        }
+        for position_index in range(len(sky_positions))
+    }
+    for slide in range(num_slides)
+}
+del time_delays_zerolag
+
 # Context manager to handle the various possible processing schemes
 ctx = scheme.from_cli(args)
 with ctx:
@@ -406,36 +437,6 @@ with ctx:
         dyn_range_factor=DYN_RANGE_FAC,
         precision='single',
     )
-
-    logging.info("Determining time slide shifts and time delays")
-    # Create a dictionary of time slide shifts; IFO 0 is unshifted
-    slide_ids = np.arange(num_slides)
-    time_slides = {
-        ifo: args.slide_shift * slide_ids * ifo_idx
-        for ifo_idx, ifo in enumerate(args.instruments)
-    }
-    # Given the time delays wrt to IFO 0 in time_slides, create a dictionary
-    # for time delay indices evaluated wrt the geocenter, in units of samples,
-    # i.e. (time delay from geocenter + time slide)*sampling_rate
-    time_delays_zerolag = sky_positions.calculate_time_delays()
-    time_delay_idx = {
-        slide: {
-            position_index: {
-                ifo: round(
-                    (
-                        time_delays_zerolag[ifo][position_index]
-                        + time_slides[ifo][slide]
-                    )
-                    * sample_rate
-                )
-                for ifo in args.instruments
-            }
-            for position_index in range(len(sky_positions))
-        }
-        for slide in slide_ids
-    }
-    del time_delays_zerolag
-    del slide_ids
 
     logging.info("Setting up MatchedFilterControl at each IFO")
     # Prototype container for the output of MatchedFilterControl and
