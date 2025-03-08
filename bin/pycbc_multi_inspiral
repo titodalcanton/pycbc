@@ -59,18 +59,19 @@ def slide_limiter(args):
     It bounds the number of slides to avoid counting triggers more than once.
     If the data is not time slid, there is a single slide for the zero-lag.
     '''
+    if not args.do_shortslides:
+        return 1
     low, upp = 1, args.segment_length[args.instruments[0]]
-    if args.do_shortslides:
-        n_ifos = len(args.instruments)
-        stride_dur = args.segment_length[args.instruments[0]]/2
-        num_slides = np.int32(1 +
-            np.floor(stride_dur / (args.slide_shift*(n_ifos-1))))
-        assert  np.logical_and(num_slides>=low,num_slides<=upp),\
-                "the combination (slideshift, segment_dur)"\
-                f" = ({args.slide_shift:.2f},{stride_dur*2:.2f})"\
-                f" goes over the allowed upper bound {upp}"
-    else:
-        num_slides = 1
+    n_ifos = len(args.instruments)
+    stride_dur = args.segment_length[args.instruments[0]]/2
+    num_slides = np.int32(
+        1 + np.floor(stride_dur / (args.slide_shift * (n_ifos - 1)))
+    )
+    assert num_slides >= low and num_slides <= upp, (
+        "the combination (slideshift, segment_dur)"
+        f" = ({args.slide_shift:.2f}, {stride_dur*2:.2f})"
+        f" goes over the allowed upper bound {upp}"
+    )
     return num_slides
 
 
