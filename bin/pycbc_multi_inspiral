@@ -358,37 +358,32 @@ strain_dict = strain.from_cli_multi_ifos(
 strain_segments_dict = strain.StrainSegments.from_cli_multi_ifos(
     args, strain_dict, args.instruments
 )
+# Convenience variables: number of IFOs and sky positions to search over
+# (either a grid or single sky point)
+nifo = len(args.instruments)
+sky_positions = SkyGrid.from_cli(parser, args)
+# Check whether the sampling rate, flen and tlen agree for all detectors,
+# taking the first detector in the list as a reference.
+for count, ifo in enumerate(args.instruments):
+    if count == 0:
+        sample_rate = strain_dict[ifo].sample_rate
+        flen = strain_segments_dict[ifo].freq_len
+        tlen = strain_segments_dict[ifo].time_len
+        delta_f = strain_segments_dict[ifo].delta_f
+    else:
+        vname = "Sample rate"
+        err_msg = " must be consistent across all ifos."
+        assert sample_rate == strain_dict[ifo].sample_rate, vname + err_msg
+        vname = "Frequency length"
+        assert flen == strain_segments_dict[ifo].freq_len, vname + err_msg
+        vname = "Time length"
+        assert tlen == strain_segments_dict[ifo].time_len, vname + err_msg
+        vname = "delta_f (=segment length inverse)"
+        assert delta_f == strain_segments_dict[ifo].delta_f, vname + err_msg
 # Context manager to handle the various possible processing schemes
 ctx = scheme.from_cli(args)
 with ctx:
     fft.from_cli(args)
-    # Set some convenience variables: number of IFOs, lower frequency,
-    # GRB time, sky positions to search (either a grid or single sky point)
-    nifo = len(args.instruments[:])
-    flow = args.low_frequency_cutoff
-    t_gps = args.trigger_time
-    sky_positions = SkyGrid.from_cli(parser, args)
-    # The following for loop is used to check whether
-    # the sampling rate, flen and tlen agree for all detectors
-    # taking the zeroth detector in the list as a reference.
-    for count, ifo in enumerate(args.instruments):
-        if count == 0:
-            sample_rate = strain_dict[ifo].sample_rate
-            flen = strain_segments_dict[ifo].freq_len
-            tlen = strain_segments_dict[ifo].time_len
-            delta_f = strain_segments_dict[ifo].delta_f
-        else:
-            vname = "Sample rate"
-            err_msg = " must be consistent across all ifos."
-            assert sample_rate == strain_dict[ifo].sample_rate, vname + err_msg
-            vname = "Frequency length"
-            assert flen == strain_segments_dict[ifo].freq_len, vname + err_msg
-            vname = "Time length"
-            assert tlen == strain_segments_dict[ifo].time_len, vname + err_msg
-            vname = "delta_f (=segment length inverse)"
-            assert delta_f == strain_segments_dict[ifo].delta_f, (
-                vname + err_msg
-            )
     # segments is a dictionary of frequency domain objects, each one of which
     # is the Fourier transform of the segments in strain_segments_dict
     logging.info("Making frequency-domain data segments")
@@ -406,7 +401,7 @@ with ctx:
         strain_dict,
         flen,
         delta_f,
-        flow,
+        args.low_frequency_cutoff,
         args.instruments,
         dyn_range_factor=DYN_RANGE_FAC,
         precision='single',
@@ -484,7 +479,7 @@ with ctx:
         args.bank_veto_bank_file,
         flen,
         delta_f,
-        flow,
+        args.low_frequency_cutoff,
         complex64,
         phase_order=args.order,
         approximant=args.approximant,
@@ -574,7 +569,7 @@ with ctx:
         flen,
         delta_f,
         complex64,
-        low_frequency_cutoff=flow,
+        low_frequency_cutoff=args.low_frequency_cutoff,
         phase_order=args.order,
         taper=args.taper_template,
         approximant=args.approximant,
@@ -1001,7 +996,7 @@ with ctx:
                             stilde[ifo].psd,
                             norm_dict[ifo],
                             stilde=stilde[ifo],
-                            low_frequency_cutoff=flow,
+                            low_frequency_cutoff=args.low_frequency_cutoff,
                         )
                         ifo_out_vals['chisq'] = chisq[ifo]
                         ifo_out_vals['chisq_dof'] = chisq_dof[ifo]
