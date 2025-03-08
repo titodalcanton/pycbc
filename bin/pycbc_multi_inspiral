@@ -684,21 +684,19 @@ with ctx:
                         position_index + 1,
                         len(sky_positions),
                     )
+                    this_td_idx = time_delay_idx[slide][position_index]
                     # Adjust the indices of triggers (if there are any)
                     # and store trigger indices list in a dictionary;
                     # when there are no triggers, the dictionary is empty.
                     # Indices are kept only if they do not get time shifted
                     # out of the time we are looking at, i.e., require
-                    # idx[ifo] - time_delay_idx[slide][position_index][ifo]
-                    # to be in (0, len(snr_dict[ifo]))
+                    # idx[ifo] - this_td_idx[ifo] to be in
+                    # (0, len(snr_dict[ifo]))
                     idx_dict = {
                         ifo: idx[ifo][
                             np.logical_and(
-                                idx[ifo]
-                                > time_delay_idx[slide][position_index][ifo],
-                                idx[ifo]
-                                < time_delay_idx[slide][position_index][ifo]
-                                + len(snr_dict[ifo]),
+                                idx[ifo] > this_td_idx[ifo],
+                                idx[ifo] < this_td_idx[ifo] + len(snr_dict[ifo]),
                             )
                         ]
                         for ifo in args.instruments
@@ -710,26 +708,18 @@ with ctx:
                     # namely, triggers must have at least 2 IFO SNRs above
                     # args.sngl_snr_threshold.
                     if nifo > 1:
-                        coinc_idx = coh.get_coinc_indexes(
-                            idx_dict, time_delay_idx[slide][position_index]
-                        )
+                        coinc_idx = coh.get_coinc_indexes(idx_dict, this_td_idx)
                     else:
                         coinc_idx = (
                             idx_dict[args.instruments[0]]
-                            - time_delay_idx[slide][position_index][
-                                args.instruments[0]
-                            ]
+                            - this_td_idx[args.instruments[0]]
                         )
                     logging.info(
                         "Found %d coincident triggers", len(coinc_idx)
                     )
                     # Time delay is applied to indices to have them at the IFOs
                     coinc_idx_det_frame = {
-                        ifo: (
-                            coinc_idx
-                            + time_delay_idx[slide][position_index][ifo]
-                        )
-                        % len(snr_dict[ifo])
+                        ifo: (coinc_idx + this_td_idx[ifo]) % len(snr_dict[ifo])
                         for ifo in args.instruments
                     }
                     # Calculate the coincident and coherent SNR.
@@ -745,7 +735,7 @@ with ctx:
                             snr_dict,
                             coinc_idx,
                             args.coinc_threshold,
-                            time_delay_idx[slide][position_index],
+                            this_td_idx,
                         )
                         logging.info(
                             "%d triggers above coincident SNR threshold",
@@ -916,10 +906,7 @@ with ctx:
                         # Updated coinc_idx_det_frame to account for the
                         # effect of the cuts applied to far
                         coinc_idx_det_frame = {
-                            ifo: (
-                                coinc_idx
-                                + time_delay_idx[slide][position_index][ifo]
-                            )
+                            ifo: (coinc_idx + this_td_idx[ifo])
                             % len(snr_dict[ifo])
                             for ifo in args.instruments
                         }
