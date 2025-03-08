@@ -655,9 +655,7 @@ with ctx:
                 # No clustering happens in the coherent search until the end.
                 snr_ts, norm, corr, ind, snrv = matched_filter[
                     ifo
-                ].matched_filter_and_cluster(
-                    s_num, template.sigmasq(stilde[ifo].psd), window=0
-                )
+                ].matched_filter_and_cluster(s_num, sigmasq[ifo], window=0)
                 snr_dict[ifo] = (
                     snr_ts[matched_filter[ifo].segments[s_num].analyze] * norm
                 )
