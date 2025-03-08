@@ -8,30 +8,31 @@ import logging
 import h5py
 from pycbc import init_logging
 
+
 init_logging(True)
+
 gw170817_time = 1187008882.43
-status = 0
+
 with h5py.File('GW170817_test_output.hdf', 'r') as f:
-    snrs = [
-        f['network/end_time_gc'][:],
-        f['network/coherent_snr'][:],
-        f['network/reweighted_snr'][:],
-        f['network/slide_id'][:]]
+    end_time = f['network/end_time_gc'][:]
+    coherent_snr = f['network/coherent_snr'][:]
+    reweighted_snr = f['network/reweighted_snr'][:]
+    slide_id = f['network/slide_id'][:]
+
 # search for compatible trigs
 mask = (
-    (abs(gw170817_time - snrs[0]) < 0.1)
-    & (snrs[1] > 25)
-    & (snrs[2] > 25)
-    & (snrs[3] == 0)
+    (abs(gw170817_time - end_time) < 0.1)
+    & (coherent_snr > 25)
+    & (reweighted_snr > 25)
+    & (slide_id == 0)
+)
+num_trigs = mask.sum()
+if num_trigs > 0:
+    logging.info(
+        'PASS: GW170817 found with coherent SNR %.2f, reweighted SNR %.2f',
+        coherent_snr[mask],
+        reweighted_snr[mask]
     )
-n = mask.sum()
-if n > 0:
-    result = 'PASS'
-    status = 0
 else:
-    result = 'FAIL'
-    status = 1
-logging.info(
-    '%s: GW170817 found with coherent SNR = %.2f; reweighted SNR %.2f', result,
-    snrs[1][mask], snrs[2][mask])
-sys.exit(status)
+    logging.error('FAIL: GW170817 missed')
+    sys.exit(1)

@@ -1,4 +1,6 @@
-#!/bin/bash -e
+#!/bin/bash
+
+set -e
 
 CONFIG_URL=https://github.com/gwastro/pycbc-config/raw/master/test/multi_inspiral
 BANK_FILE=gw170817_single_template.hdf
@@ -18,7 +20,7 @@ done
 
 echo -e "\\n\\n>> [`date`] Getting template bank"
 wget -nv -nc ${CONFIG_URL}/${BANK_FILE}
-echo -e "\\n\\n>> [`date`] Bank veto bank"
+echo -e "\\n\\n>> [`date`] Getting bank veto bank"
 wget -nv -nc ${CONFIG_URL}/${BANK_VETO_FILE}
 
 EVENT=1187008882
@@ -41,14 +43,14 @@ pycbc_multi_inspiral \
     --gps-end-time ${GPS_END} \
     --trig-start-time ${TRIG_START} \
     --trig-end-time ${TRIG_END} \
-    --ra 3.44527994344 \
-    --dec -0.408407044967 \
+    --ra '3.44527994344 rad' \
+    --dec '-0.408407044967 rad' \
     --bank-file ${BANK_FILE} \
     --approximant IMRPhenomD \
     --order -1 \
     --low-frequency-cutoff 30 \
     --sngl-snr-threshold 3.0 \
-    --chisq-bins "0.9*get_freq('fSEOBNRv4Peak',params.mass1,params.mass2,params.spin1z,params.spin2z)**(2./3.)" \
+    --chisq-bins "0.9*get_freq('fIMRPhenomDPeak',params.mass1,params.mass2,params.spin1z,params.spin2z)**(2./3.)" \
     --pad-data 8 \
     --strain-high-pass 25 \
     --sample-rate 4096 \
