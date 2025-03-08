@@ -440,6 +440,7 @@ with ctx:
         for slide in slide_ids
     }
     del time_delays_zerolag
+    del slide_ids
 
     logging.info("Setting up MatchedFilterControl at each IFO")
     # Prototype container for the output of MatchedFilterControl and
@@ -527,7 +528,7 @@ with ctx:
         'bank_chisq': None,
         'bank_chisq_dof': None,
         'auto_chisq': None,
-        'auto_chisq_dof': int,
+        'auto_chisq_dof': None,
         'slide_id': None,
     }
     ifo_names = sorted(ifo_out_vals.keys())
@@ -586,7 +587,7 @@ with ctx:
     logging.info("Full template bank size: %d", n_bank)
     for ifo in args.instruments:
         bank.template_thinning(inj_filter_rejector[ifo])
-    if not len(bank) == n_bank:
+    if len(bank) != n_bank:
         n_bank = len(bank)
         logging.info("Template bank size after thinning: %d", n_bank)
 
@@ -597,7 +598,7 @@ with ctx:
     # Loop over templates
     for t_num, template in enumerate(bank):
         # Loop over segments
-        for s_num, stilde in enumerate(segments[args.instruments[0]]):
+        for s_num in range(len(segments[args.instruments[0]])):
             stilde = {ifo: segments[ifo][s_num] for ifo in args.instruments}
             # Checks the 'inj_filter_rejector' options to determine whether
             # to filter this template/segment if injections are present
