@@ -620,10 +620,9 @@ with ctx:
             # unnormalized matched-filter with itself. This quantity is
             # used to normalize matched-filters with the data.
             sigmasq = {
-                ifo: template.sigmasq(segments[ifo][s_num].psd)
+                ifo: template.sigmasq(stilde[ifo].psd)
                 for ifo in args.instruments
             }
-            sigma = {ifo: np.sqrt(sigmasq[ifo]) for ifo in args.instruments}
             # Every time s_num is zero, run new_template to increment the
             # template index
             if s_num == 0:
@@ -786,6 +785,9 @@ with ctx:
                         }
                         # The cut is applied after the left vs right
                         # comparison to ensure the arrays have equal lengths
+                        sigma = {
+                            ifo: np.sqrt(sigmasq[ifo]) for ifo in sigmasq
+                        }
                         if args.projection == 'left+right':
                             # Left polarized coherent SNR
                             project_l = coh.get_projection_matrix(
