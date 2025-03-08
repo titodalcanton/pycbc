@@ -669,6 +669,7 @@ with ctx:
                 # or negative
                 idx[ifo] = ind.astype(np.int32)
                 snr[ifo] = snrv * norm
+            del snr_ts, norm, corr, ind, snrv
 
             # Move onto next segment if there are no triggers.
             n_trigs = [len(snr[ifo]) for ifo in args.instruments]
