@@ -671,8 +671,7 @@ with ctx:
             del snr_ts, norm, corr, ind, snrv
 
             # Move onto next segment if there are no triggers.
-            n_trigs = [len(snr[ifo]) for ifo in args.instruments]
-            if not any(n_trigs):
+            if not any([len(snr[ifo]) for ifo in snr]):
                 continue
 
             # Loop over (short) time-slides, starting with the zero-lag
