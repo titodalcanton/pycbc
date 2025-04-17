@@ -614,6 +614,10 @@ with ctx:
     logging.info("Starting the filtering...")
     # Loop over templates
     for t_num, template in enumerate(bank):
+        if args.cluster_method == "window":
+            cluster_window = int(args.cluster_window * sample_rate)
+        elif args.cluster_method == "template":
+            cluster_window = int(template.chirp_length * sample_rate)
         # Loop over segments
         for s_num, stilde in enumerate(segments[args.instruments[0]]):
             stilde = {ifo: segments[ifo][s_num] for ifo in args.instruments}
@@ -1055,14 +1059,8 @@ with ctx:
                     )
             # Left loops over sky positions and time-slides,
             # but not loops over segments and templates.
-            # The triggers can be clustered
-            if args.cluster_method == "window":
-                cluster_window = int(args.cluster_window * sample_rate)
-            elif args.cluster_method == "template":
-                cluster_window = int(template.chirp_length * sample_rate)
             # Cluster template events by slide
             for slide in range(num_slides):
-                logging.debug("Clustering slide %d", slide)
                 event_mgr.cluster_template_network_events(
                     'time_index', 'reweighted_snr', cluster_window, slide=slide
                 )
