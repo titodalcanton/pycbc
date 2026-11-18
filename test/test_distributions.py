@@ -165,7 +165,7 @@ class TestDistributions(unittest.TestCase):
                 hist_min = dist.bounds[param][0]
                 hist_max = dist.bounds[param][1]
 
-                # get the PDF and logarithm of the PDF from the distriubtion
+                # get the PDF and logarithm of the PDF from the distribution
                 x = numpy.arange(hist_min, hist_max, step)
                 pdf = numpy.array([dist.pdf(**{param: xx}) for xx in x])
                 logpdf = numpy.array([dist.logpdf(**{param: xx}) for xx in x])
@@ -175,14 +175,10 @@ class TestDistributions(unittest.TestCase):
 
                 # see if each element in ratio of these two logarithm of PDF
                 # values are within the specified tolerance
-                if not numpy.all(
-                    abs(numpy.nan_to_num(1.0 - logpdf / pdf_log)) < tolerance
-                ):
-                    raise ValueError(
-                        "The PDF and logarithm of the PDF "
-                        f"functions for distribution {dist.name} "
-                        "do not agree"
-                    )
+                self.assertTrue(
+                    numpy.all(abs(numpy.nan_to_num(1.0 - logpdf / pdf_log)) < tolerance),
+                    f"The PDF and logarithm of the PDF functions for distribution {dist.name} do not agree"
+                )
 
     def test_pdf_arrays(self):
         """
@@ -358,13 +354,10 @@ class TestDistributions(unittest.TestCase):
                 pdf_2 = numpy.array(
                     [polar_dist.pdf(theta=p) * ang_dist.pdf(theta=a) for p, a in cart_sin]
                 )
-                if not (
-                    numpy.all(numpy.nan_to_num(abs(1.0 - pdf_1 / pdf_2)) < tolerance)
-                ):
-                    raise ValueError(
-                        f"The {dist.name} distribution PDF does not match "
-                        "its component distributions."
-                    )
+                self.assertTrue(
+                    numpy.all(numpy.nan_to_num(abs(1.0 - pdf_1 / pdf_2)) < tolerance),
+                    f"The {dist.name} distribution PDF does not match its component distributions."
+                )
 
                 # check logarithm of PDF equivalent
                 pdf_1 = numpy.array(
@@ -379,14 +372,10 @@ class TestDistributions(unittest.TestCase):
                         for p, a in cart_sin
                     ]
                 )
-                if not (
-                    numpy.all(numpy.nan_to_num(abs(1.0 - pdf_1 / pdf_2)) < tolerance)
-                ):
-                    raise ValueError(
-                        f"The {dist.name} distribution PDF does not match "
-                        "its component "
-                        "distriubtions."
-                    )
+                self.assertTrue(
+                    numpy.all(numpy.nan_to_num(abs(1.0 - pdf_1 / pdf_2)) < tolerance),
+                    f"The {dist.name} distribution PDF does not match its component distributions."
+                )
 
             # check random draws from polar angle equilvalent
             ang_1 = dist.rvs(n_samples)[dist.polar_angle]
