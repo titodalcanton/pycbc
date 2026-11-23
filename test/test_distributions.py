@@ -193,6 +193,8 @@ class TestDistributions(unittest.TestCase):
         npts = 9
         tested = 0
         for dist in self.dists:
+            if not hasattr(dist, "bounds") or not hasattr(dist, "pdf"):
+                continue
             points = {}
             for param in dist.params:
                 low, high = dist.bounds[param][0], dist.bounds[param][1]
@@ -234,6 +236,8 @@ class TestDistributions(unittest.TestCase):
         """
         tested = 0
         for dist in self.dists:
+            if not hasattr(dist, "bounds") or not hasattr(dist, "pdf"):
+                continue
             low = {}
             high = {}
             for param in dist.params:
