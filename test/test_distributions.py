@@ -175,10 +175,11 @@ class TestDistributions(unittest.TestCase):
 
                 # see if each element in ratio of these two logarithm of PDF
                 # values are within the specified tolerance
-                self.assertTrue(
-                    numpy.all(abs(numpy.nan_to_num(1.0 - logpdf / pdf_log)) < tolerance),
-                    f"The PDF and logarithm of the PDF functions for distribution {dist.name} do not agree"
-                )
+                with self.subTest(dist=dist.name, param=param):
+                    self.assertTrue(
+                        numpy.all(abs(numpy.nan_to_num(1.0 - logpdf / pdf_log)) < tolerance),
+                        f"The PDF and logarithm of the PDF functions for distribution {dist.name} do not agree"
+                    )
 
     def test_pdf_arrays(self):
         """
